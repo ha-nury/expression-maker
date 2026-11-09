@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full bg-slate-900 text-slate-100">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🫪</text></svg>">
+    <title>누리네 표-정 메이커</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.460.0"></script>
+    <!-- JSZip for Bulk Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(148, 163, 184, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.6);
+        }
+
+        .transparent-bg {
+            background-color: #f8fafc;
+            background-image:
+                linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+                linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+                linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .crop-box {
+            border: 2px dashed #3b82f6;
+            background: rgba(59, 130, 246, 0.15);
+            box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.4);
+        }
+
+        .crop-handle {
+            width: 12px;
+            height: 12px;
+            background-color: #3b82f6;
+            border: 2px solid white;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        body.resizing,
+        body.resizing * {
+            cursor: col-resize !important;
+            user-select: none !important;
+        }
+
+        #canvas-transform-wrapper {
+            will-change: transform;
+        }
+    </style>
+</head>
+
+<body
+    class="h-full font-sans antialiased flex flex-col overflow-hidden select-none bg-slate-100 text-slate-800 transition-colors duration-200">
+
+    <!-- Header Navigation -->
+    <header class="h-14 border-b border-slate-200 bg-white backdrop-blur flex items-center justify-between px-6 z-20">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                <i data-lucide="star" class="w-5 h-5 fill-current"></i>
+            </div>
+            <h1 class="font-bold text-lg tracking-wide text-slate-800">누리네 표-정 메이커</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-reset-all"
+                class="text-xs px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition flex items-center gap-1.5">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 전체 데이터 초기화
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+
+        <!-- 1. LEFT PANEL: Parts Management & Selection -->
+        <section id="panel-left" class="w-80 border-r border-slate-200 bg-slate-50 flex flex-col h-full z-10 shrink-0">
+            <!-- Base Image Section -->
+            <div class="p-4 border-b border-slate-200 bg-white">
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">기본 베이스
+                    일러스트</label>
+                <div class="flex items-center gap-2">
+                    <button id="btn-upload-base"
+                        class="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition shadow-lg shadow-blue-600/20">
+                        <i data-lucide="upload" class="w-4 h-4"></i> 베이스 불러오기
+                    </button>
+                    <input type="file" id="input-base-file" accept="image/*" class="hidden" />
+                </div>
+                <div id="base-status" class="mt-2 text-xs text-slate-500 truncate flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span> 베이스 이미지 없음
+                </div>
+            </div>
+
+            <!-- Categories Tabs -->
+            <div class="flex border-b border-slate-200 bg-white p-1 gap-1">
+                <button data-cat="eye"
+                    class="tab-btn flex-1 py-1.5 text-xs font-medium rounded-md text-slate-500 hover:text-slate-900 transition flex flex-col items-center gap-1 active bg-slate-200 text-blue-600">
+                    <i data-lucide="eye" class="w-4 h-4"></i> 눈
+                </button>
+                <button data-cat="eyebrow"
+                    class="tab-btn flex-1 py-1.5 text-xs font-medium rounded-md text-slate-500 hover:text-slate-900 transition flex flex-col items-center gap-1">
+                    <i data-lucide="minus" class="w-4 h-4"></i> 눈썹
+                </button>
+                <button data-cat="mouth"
+                    class="tab-btn flex-1 py-1.5 text-xs font-medium rounded-md text-slate-500 hover:text-slate-900 transition flex flex-col items-center gap-1">
+                    <i data-lucide="smile" class="w-4 h-4"></i> 입
+                </button>
+                <button data-cat="extra"
+                    class="tab-btn flex-1 py-1.5 text-xs font-medium rounded-md text-slate-500 hover:text-slate-900 transition flex flex-col items-center gap-1">
+                    <i data-lucide="flame" class="w-4 h-4"></i> 감정/기타
+                </button>
+            </div>
+
+            <!-- Category Upload Button -->
+            <div class="p-3 border-b border-slate-200 flex items-center justify-between">
+                <span id="current-category-title" class="text-xs font-bold text-slate-700">눈 파츠 목록</span>
+                <button id="btn-upload-part"
+                    class="text-xs py-1.5 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300 rounded-md flex items-center gap-1.5 transition">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> 파츠 추가
+                </button>
+                <input type="file" id="input-part-file" accept="image/*" multiple class="hidden" />
+            </div>
+
+            <!-- Parts Grid / List -->
+            <div id="parts-list-container" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- Part items rendered dynamically -->
+            </div>
+
+            <!-- Part Position Adjuster UI (Directional D-Pad Buttons) -->
+            <div id="part-transform-panel" class="p-3 border-t border-slate-200 bg-white space-y-2 hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <i data-lucide="move" class="w-3.5 h-3.5 text-blue-500"></i> 선택 파츠 위치 미세 조절 (1px)
+                    </span>
+                    <button id="btn-reset-part-offset"
+                        class="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 rounded transition">초기화</button>
+                </div>
+                <div class="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-200">
+                    <!-- Directional D-Pad -->
+                    <div class="grid grid-cols-3 gap-1 w-24">
+                        <div></div>
+                        <button id="btn-move-up"
+                            class="p-1.5 bg-white hover:bg-blue-50 active:bg-blue-100 text-slate-700 hover:text-blue-600 border border-slate-200 rounded text-center flex items-center justify-center transition shadow-sm">
+                            <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                        </button>
+                        <div></div>
+                        <button id="btn-move-left"
+                            class="p-1.5 bg-white hover:bg-blue-50 active:bg-blue-100 text-slate-700 hover:text-blue-600 border border-slate-200 rounded text-center flex items-center justify-center transition shadow-sm">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <div class="flex items-center justify-center text-[10px] text-slate-400 font-mono">1px</div>
+                        <button id="btn-move-right"
+                            class="p-1.5 bg-white hover:bg-blue-50 active:bg-blue-100 text-slate-700 hover:text-blue-600 border border-slate-200 rounded text-center flex items-center justify-center transition shadow-sm">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                        <div></div>
+                        <button id="btn-move-down"
+                            class="p-1.5 bg-white hover:bg-blue-50 active:bg-blue-100 text-slate-700 hover:text-blue-600 border border-slate-200 rounded text-center flex items-center justify-center transition shadow-sm">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </button>
+                        <div></div>
+                    </div>
+                    <!-- Value Indicator -->
+                    <div class="text-right text-xs space-y-1 font-mono pr-2">
+                        <div class="text-slate-500">X: <span id="val-offset-x"
+                                class="font-bold text-blue-600">0px</span></div>
+                        <div class="text-slate-500">Y: <span id="val-offset-y"
+                                class="font-bold text-blue-600">0px</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div id="resizer-left"
+            class="w-1.5 shrink-0 cursor-col-resize bg-slate-200 hover:bg-blue-400 transition-colors touch-none z-20"
+            title="드래그: 너비 조절 / 더블클릭: 기본 너비로 복원"></div>
+        <!-- 2. CENTER PANEL: Preview Canvas & Layer Reordering -->
+        <section class="flex-1 bg-slate-100 flex flex-col h-full relative overflow-hidden">
+            <!-- Vertical Top Layer Controls -->
+            <div
+                class="absolute top-3 left-3 z-20 w-72 max-w-[60%] bg-white/95 backdrop-blur border border-slate-200 rounded-lg shadow-xl overflow-hidden">
+                <div class="px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-slate-50"
+                    id="btn-toggle-layers">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="layers" class="w-4 h-4 text-blue-500"></i>
+                        <span class="text-xs font-semibold text-slate-700">레이어 순서 조정</span>
+                        <span id="active-layers-count"
+                            class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-mono">0</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-slate-500 text-xs">
+                        <span id="layer-toggle-text">펼치기</span>
+                        <i data-lucide="chevron-down" id="layer-toggle-icon" class="w-4 h-4 transition-transform"></i>
+                    </div>
+                </div>
+                <!-- Collapsible Vertical Layers Container -->
+                <div id="layers-panel"
+                    class="hidden px-3 py-2 border-t border-slate-200 bg-slate-50 max-h-64 overflow-y-auto">
+                    <div id="active-layers-bar" class="flex flex-col gap-1.5">
+                        <!-- Dynamic Vertical Layer List -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viewport Canvas Container -->
+            <div id="canvas-viewport"
+                class="flex-1 flex items-center justify-center p-4 transparent-bg relative overflow-hidden touch-none cursor-grab active:cursor-grabbing">
+                <div id="canvas-transform-wrapper" class="relative flex items-center justify-center origin-center">
+                    <canvas id="main-canvas" class="shadow-2xl rounded border border-slate-300 block"></canvas>
+
+                    <!-- Crop Framing Overlay (Resizable Square) -->
+                    <div id="crop-overlay" class="crop-box absolute hidden pointer-events-auto">
+                        <div class="crop-handle -top-1.5 -left-1.5 cursor-nwse-resize" data-handle="nw"></div>
+                        <div class="crop-handle -top-1.5 -right-1.5 cursor-nesw-resize" data-handle="ne"></div>
+                        <div class="crop-handle -bottom-1.5 -left-1.5 cursor-nesw-resize" data-handle="sw"></div>
+                        <div class="crop-handle -bottom-1.5 -right-1.5 cursor-nwse-resize" data-handle="se"></div>
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span
+                                class="text-[10px] font-bold text-blue-600 bg-white/90 px-1.5 py-0.5 rounded shadow">미리보기
+                                영역</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Toolbar: Zoom Controls & Crop Framing Toggle -->
+            <div class="h-12 bg-white border-t border-slate-200 px-6 flex items-center justify-between z-10">
+                <!-- Zoom Controls -->
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                        <i data-lucide="search" class="w-3.5 h-3.5"></i> 확대/축소
+                    </span>
+                    <button id="btn-zoom-out" class="p-1 hover:bg-slate-100 text-slate-700 rounded transition"><i
+                            data-lucide="minus" class="w-4 h-4"></i></button>
+                    <input type="range" id="zoom-range" min="30" max="300" value="100"
+                        class="w-28 accent-blue-500 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    <button id="btn-zoom-in" class="p-1 hover:bg-slate-100 text-slate-700 rounded transition"><i
+                            data-lucide="plus" class="w-4 h-4"></i></button>
+                    <span id="zoom-value" class="text-xs font-mono text-slate-500 w-10">100%</span>
+                    <button id="btn-zoom-reset"
+                        class="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition ml-1">초기화</button>
+                </div>
+
+                <!-- Crop / Focus Mode Controls -->
+                <div class="flex items-center gap-3">
+                    <button id="btn-toggle-crop-mode"
+                        class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+                        <i data-lucide="crop" class="w-3.5 h-3.5 text-blue-500"></i>
+                        <span>얼굴 영역 지정하기!</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <div id="resizer-right"
+            class="w-1.5 shrink-0 cursor-col-resize bg-slate-200 hover:bg-blue-400 transition-colors touch-none z-20"
+            title="드래그: 너비 조절 / 더블클릭: 기본 너비로 복원"></div>
+        <!-- 3. RIGHT PANEL: Preset Combinations & Batch Download -->
+        <section id="panel-right" class="w-96 border-l border-slate-200 bg-slate-50 flex flex-col h-full z-10 shrink-0">
+            <!-- Save Preset Header -->
+            <div class="p-4 border-b border-slate-200 bg-white">
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">현재 표정 조합
+                    저장</label>
+                <div class="space-y-2">
+                    <input type="text" id="preset-name-input" placeholder="표정 이름 (예: 기쁨_01)"
+                        class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition">
+                    <button id="btn-save-preset"
+                        class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-600/20">
+                        <i data-lucide="bookmark-plus" class="w-4 h-4"></i> 표정 저장하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- Saved Presets Header & Bulk Actions -->
+            <div class="p-3 border-b border-slate-200 flex items-center justify-between bg-white">
+                <span class="text-xs font-bold text-slate-700">저장된 표정 목록</span>
+                <button id="btn-download-zip"
+                    class="text-xs py-1.5 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-md flex items-center gap-1 transition font-medium">
+                    <i data-lucide="archive" class="w-3.5 h-3.5"></i> ZIP 일괄 다운로드
+                </button>
+            </div>
+
+            <!-- Presets List -->
+            <div id="presets-container" class="flex-1 overflow-y-auto p-3 space-y-4">
+                <!-- Preset cards rendered dynamically -->
+            </div>
+        </section>
+
+    </main>
+
+    <div id="ui-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-5 w-96 max-w-[90vw] space-y-3">
+            <p id="ui-modal-msg" class="text-sm text-slate-700" style="white-space:pre-line"></p>
+            <input id="ui-modal-input" type="text"
+                class="hidden select-text w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+            <div class="flex justify-end gap-2">
+                <button id="ui-modal-cancel"
+                    class="px-3 py-1.5 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">취소</button>
+                <button id="ui-modal-ok"
+                    class="px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-500 text-white">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IndexedDB & App Logic -->
+    <script>
+        // --- INDEXEDDB HELPER ---
+        const DB_NAME = 'ExpressionMakerDB';
+        const DB_VERSION = 1;
+        let db = null;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains('assets')) {
+                        database.createObjectStore('assets', {keyPath: 'id'});
+                    }
+                    if (!database.objectStoreNames.contains('presets')) {
+                        database.createObjectStore('presets', {keyPath: 'id'});
+                    }
+                };
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    resolve(db);
+                };
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        function saveDBItem(storeName, item) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const req = store.put(item);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        function getAllDBItems(storeName) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readonly');
+                const store = tx.objectStore(storeName);
+                const req = store.getAll();
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        function deleteDBItem(storeName, id) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const req = store.delete(id);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        function clearDBStore(storeName) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const req = store.clear();
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // --- DIALOG / UTIL HELPERS ---
+        function uiDialog({message, input = false, value = '', cancel = true}) {
+            return new Promise(res => {
+                const m = document.getElementById('ui-modal'), inp = document.getElementById('ui-modal-input');
+                const ok = document.getElementById('ui-modal-ok'), no = document.getElementById('ui-modal-cancel');
+                document.getElementById('ui-modal-msg').textContent = message;
+                inp.classList.toggle('hidden', !input); inp.value = value;
+                no.classList.toggle('hidden', !cancel);
+                m.classList.remove('hidden');
+                (input ? inp : ok).focus(); if (input) inp.select();
+                const done = v => {m.classList.add('hidden'); ok.onclick = no.onclick = m.onkeydown = null; res(v);};
+                ok.onclick = () => done(input ? inp.value : true);
+                no.onclick = () => done(input ? null : false);
+                m.onkeydown = e => {
+                    if (e.key === 'Enter') {e.preventDefault(); ok.click();}
+                    else if (e.key === 'Escape' && cancel) no.click();
+                };
+            });
+        }
+        const uiConfirm = message => uiDialog({message});
+        const uiPrompt = (message, value) => uiDialog({message, input: true, value});
+        const uiAlert = message => uiDialog({message, cancel: false});
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        const presetUsesPart = (pr, id) => ['eye', 'eyebrow', 'mouth'].some(k => pr.activeParts[k] === id) || (pr.activeParts.extra || []).includes(id);
+        function removePartFromPreset(pr, id) {
+            ['eye', 'eyebrow', 'mouth'].forEach(k => {if (pr.activeParts[k] === id) pr.activeParts[k] = null;});
+            pr.activeParts.extra = (pr.activeParts.extra || []).filter(x => x !== id);
+        }
+
+        const CROP_KEY = 'expressionMaker.cropBox';
+        function saveCropBox() {
+            try {localStorage.setItem(CROP_KEY, JSON.stringify(state.cropBox));} catch (e) { }
+        }
+        function loadCropBox() {
+            try {
+                const c = JSON.parse(localStorage.getItem(CROP_KEY));
+                if (c && [c.x, c.y, c.size].every(v => typeof v === 'number' && isFinite(v)) && c.size > 0 && c.size <= 1) {
+                    state.cropBox = {x: c.x, y: c.y, size: c.size};
+                }
+            } catch (e) { }
+        }
+
+        // --- APP STATE ---
+        const state = {
+            baseImage: null,
+            currentCategory: 'eye',
+            parts: [],
+            layerOrder: ['extra', 'eyebrow', 'eye', 'mouth', 'base'],
+            activeParts: {
+                eye: null,
+                eyebrow: null,
+                mouth: null,
+                extra: []
+            },
+            selectedPartForOffset: null,
+            presets: [],
+            zoomLevel: 100,
+            panX: 0,
+            panY: 0,
+            isPanning: false,
+            panStartX: 0,
+            panStartY: 0,
+            cropBox: {x: 0.25, y: 0.1, size: 0.5},
+            isCropToolActive: false
+        };
+
+        const categoryTitles = {
+            eye: '눈 파츠 목록',
+            eyebrow: '눈썹 파츠 목록',
+            mouth: '입 파츠 목록',
+            extra: '감정/기타 파츠 목록 (복수 선택)'
+        };
+
+        // --- AUTOMATIC TRANSPARENT BOUNDING-BOX CROP FOR SMALL PARTS ---
+        const thumbCache = new WeakMap();
+        function getCroppedThumbnailDataURL(imgElement) {
+            if (!thumbCache.has(imgElement)) thumbCache.set(imgElement, computeThumb(imgElement));
+            return thumbCache.get(imgElement);
+        }
+        function computeThumb(imgElement) {
+            try {
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                const w = imgElement.naturalWidth || imgElement.width;
+                const h = imgElement.naturalHeight || imgElement.height;
+                if (!w || !h) return imgElement.src;
+
+                tempCanvas.width = w;
+                tempCanvas.height = h;
+                tempCtx.drawImage(imgElement, 0, 0);
+
+                const imgData = tempCtx.getImageData(0, 0, w, h);
+                const data = imgData.data;
+
+                let minX = w, minY = h, maxX = 0, maxY = 0;
+                let hasVisiblePixel = false;
+
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const alpha = data[(y * w + x) * 4 + 3];
+                        if (alpha > 10) {
+                            hasVisiblePixel = true;
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+
+                if (!hasVisiblePixel || minX >= maxX || minY >= maxY) {
+                    return imgElement.src;
+                }
+
+                const padding = 4;
+                minX = Math.max(0, minX - padding);
+                minY = Math.max(0, minY - padding);
+                maxX = Math.min(w, maxX + padding);
+                maxY = Math.min(h, maxY + padding);
+
+                const cropW = maxX - minX;
+                const cropH = maxY - minY;
+
+                const cropCanvas = document.createElement('canvas');
+                cropCanvas.width = cropW;
+                cropCanvas.height = cropH;
+                const cropCtx = cropCanvas.getContext('2d');
+                cropCtx.drawImage(imgElement, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+                return cropCanvas.toDataURL();
+            } catch (e) {
+                return imgElement.src;
+            }
+        }
+
+        // --- DOM Elements References ---
+        let btnUploadBase, inputBaseFile, baseStatus, btnUploadPart, inputPartFile;
+        let currentCategoryTitle, partsListContainer, partTransformPanel;
+        let valOffsetX, valOffsetY, btnResetPartOffset;
+        let canvas, canvasViewport, transformWrapper, cropOverlay;
+        let presetNameInput, btnSavePreset, btnDownloadZip;
+
+        function initDOMReferences() {
+            btnUploadBase = document.getElementById('btn-upload-base');
+            inputBaseFile = document.getElementById('input-base-file');
+            baseStatus = document.getElementById('base-status');
+            btnUploadPart = document.getElementById('btn-upload-part');
+            inputPartFile = document.getElementById('input-part-file');
+            currentCategoryTitle = document.getElementById('current-category-title');
+            partsListContainer = document.getElementById('parts-list-container');
+            partTransformPanel = document.getElementById('part-transform-panel');
+            valOffsetX = document.getElementById('val-offset-x');
+            valOffsetY = document.getElementById('val-offset-y');
+            btnResetPartOffset = document.getElementById('btn-reset-part-offset');
+            canvas = document.getElementById('main-canvas');
+            canvasViewport = document.getElementById('canvas-viewport');
+            transformWrapper = document.getElementById('canvas-transform-wrapper');
+            cropOverlay = document.getElementById('crop-overlay');
+            presetNameInput = document.getElementById('preset-name-input');
+            btnSavePreset = document.getElementById('btn-save-preset');
+            btnDownloadZip = document.getElementById('btn-download-zip');
+        }
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            initDOMReferences();
+            lucide.createIcons();
+            await initDB();
+            await loadSavedData();
+            setupEventListeners();
+            setupPartOffsetControls();
+            setupViewportZoomPan();
+            setupCropBoxInteraction();
+            setupPanelResizers();
+            new ResizeObserver(() => fitCanvas()).observe(canvasViewport);
+            renderCategoryParts();
+            renderActiveLayersBar();
+            renderPresets();
+            drawCanvas();
+        });
+
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            // Base Upload
+            btnUploadBase.addEventListener('click', () => inputBaseFile.click());
+            inputBaseFile.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const blob = file;
+                const img = new Image();
+                img.src = URL.createObjectURL(blob);
+                await img.decode();
+
+                const item = {id: 'base', blob, name: file.name, transform: {offsetX: 0, offsetY: 0}};
+                await saveDBItem('assets', item);
+                state.baseImage = {...item, imgElement: img};
+
+                updateBaseStatus();
+                requestCanvasDraw();
+            });
+
+            // Category Tabs Switch
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.tab-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-slate-200', 'text-blue-600');
+                        b.classList.add('text-slate-500');
+                    });
+                    const target = e.currentTarget;
+                    target.classList.add('active', 'bg-slate-200', 'text-blue-600');
+                    target.classList.remove('text-slate-500');
+
+                    state.currentCategory = target.getAttribute('data-cat');
+                    currentCategoryTitle.textContent = categoryTitles[state.currentCategory];
+                    renderCategoryParts();
+                });
+            });
+
+            // Part Upload
+            btnUploadPart.addEventListener('click', () => inputPartFile.click());
+            inputPartFile.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (!files.length) return;
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const id = 'part_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                    const name = file.name.replace(/\.[^/.]+$/, "");
+                    const blob = file;
+
+                    const img = new Image();
+                    img.src = URL.createObjectURL(blob);
+                    await img.decode();
+
+                    const transform = {offsetX: 0, offsetY: 0};
+                    const item = {id, category: state.currentCategory, name, blob, transform};
+                    await saveDBItem('assets', item);
+                    state.parts.push({...item, imgElement: img});
+                }
+
+                inputPartFile.value = '';
+                renderCategoryParts();
+            });
+
+            // Layer Order Collapsible Toggle
+            const btnToggleLayers = document.getElementById('btn-toggle-layers');
+            const layersPanel = document.getElementById('layers-panel');
+            const layerToggleText = document.getElementById('layer-toggle-text');
+            const layerToggleIcon = document.getElementById('layer-toggle-icon');
+
+            btnToggleLayers.addEventListener('click', () => {
+                const isHidden = layersPanel.classList.contains('hidden');
+                if (isHidden) {
+                    layersPanel.classList.remove('hidden');
+                    layerToggleText.textContent = '접기';
+                    layerToggleIcon.classList.add('rotate-180');
+                } else {
+                    layersPanel.classList.add('hidden');
+                    layerToggleText.textContent = '펼치기';
+                    layerToggleIcon.classList.remove('rotate-180');
+                }
+            });
+
+            // Save Preset
+            btnSavePreset.addEventListener('click', async () => {
+                const name = presetNameInput.value.trim() || `표정_${state.presets.length + 1}`;
+                const presetId = 'preset_' + Date.now();
+
+                const activeMap = {
+                    eye: state.activeParts.eye ? state.activeParts.eye.id : null,
+                    eyebrow: state.activeParts.eyebrow ? state.activeParts.eyebrow.id : null,
+                    mouth: state.activeParts.mouth ? state.activeParts.mouth.id : null,
+                    extra: state.activeParts.extra.map(p => p.id)
+                };
+
+                const newPreset = {
+                    id: presetId,
+                    name,
+                    activeParts: activeMap,
+                    layerOrder: [...state.layerOrder],
+                    cropBox: {...state.cropBox}
+                };
+
+                await saveDBItem('presets', newPreset);
+                state.presets.push(newPreset);
+                presetNameInput.value = '';
+                renderPresets();
+            });
+
+            // Bulk ZIP Download
+            btnDownloadZip.addEventListener('click', downloadAllPresetsZip);
+
+            // Reset All Data
+            document.getElementById('btn-reset-all').addEventListener('click', async () => {
+                if (await uiConfirm('모든 베이스 이미지, 파츠, 저장된 표정이 삭제됩니다. 계속하시겠습니까?')) {
+                    await clearDBStore('assets');
+                    await clearDBStore('presets');
+                    try {localStorage.removeItem(CROP_KEY);} catch (e) { }
+                    location.reload();
+                }
+            });
+
+            // Toggle Crop Framing Overlay Tool
+            const btnToggleCropMode = document.getElementById('btn-toggle-crop-mode');
+            btnToggleCropMode.addEventListener('click', () => {
+                state.isCropToolActive = !state.isCropToolActive;
+                if (state.isCropToolActive) {
+                    btnToggleCropMode.classList.add('bg-blue-600', 'text-white');
+                    btnToggleCropMode.classList.remove('bg-slate-200', 'text-slate-800');
+                } else {
+                    btnToggleCropMode.classList.remove('bg-blue-600', 'text-white');
+                    btnToggleCropMode.classList.add('bg-slate-200', 'text-slate-800');
+                }
+                updateCropOverlayPosition();
+            });
+        }
+
+        // --- PART POSITION OFFSET CONTROLS (D-PAD 1PX MOVE) ---
+        function setupPartOffsetControls() {
+            function movePartOffset(dx, dy) {
+                const part = state.selectedPartForOffset;
+                if (!part) return;
+
+                part.transform = part.transform || {offsetX: 0, offsetY: 0};
+                part.transform.offsetX += dx;
+                part.transform.offsetY += dy;
+
+                updateOffsetUI(part);
+
+                saveDBItem('assets', {
+                    id: part.id,
+                    category: part.category,
+                    name: part.name,
+                    blob: part.blob,
+                    transform: part.transform
+                });
+
+                requestCanvasDraw();
+            }
+
+            document.getElementById('btn-move-up').addEventListener('click', () => movePartOffset(0, -1));
+            document.getElementById('btn-move-down').addEventListener('click', () => movePartOffset(0, 1));
+            document.getElementById('btn-move-left').addEventListener('click', () => movePartOffset(-1, 0));
+            document.getElementById('btn-move-right').addEventListener('click', () => movePartOffset(1, 0));
+
+            btnResetPartOffset.addEventListener('click', () => {
+                const part = state.selectedPartForOffset;
+                if (!part) return;
+                part.transform = {offsetX: 0, offsetY: 0};
+                updateOffsetUI(part);
+                saveDBItem('assets', {
+                    id: part.id,
+                    category: part.category,
+                    name: part.name,
+                    blob: part.blob,
+                    transform: part.transform
+                });
+                requestCanvasDraw();
+            });
+        }
+
+        function updateOffsetUI(part) {
+            if (!part) {
+                partTransformPanel.classList.add('hidden');
+                state.selectedPartForOffset = null;
+                return;
+            }
+            state.selectedPartForOffset = part;
+            partTransformPanel.classList.remove('hidden');
+
+            const t = part.transform || {offsetX: 0, offsetY: 0};
+            if (valOffsetX) valOffsetX.textContent = `${t.offsetX || 0}px`;
+            if (valOffsetY) valOffsetY.textContent = `${t.offsetY || 0}px`;
+        }
+
+        // --- HIGH-PERFORMANCE ZERO-DELAY PAN & ZOOM ---
+        function setupViewportZoomPan() {
+            const zoomRange = document.getElementById('zoom-range');
+            const zoomVal = document.getElementById('zoom-value');
+            const btnIn = document.getElementById('btn-zoom-in');
+            const btnOut = document.getElementById('btn-zoom-out');
+            const btnReset = document.getElementById('btn-zoom-reset');
+
+            let rafId = null, lastZoom = null;
+            function renderTransform() {
+                transformWrapper.style.transform = `translate3d(${state.panX}px, ${state.panY}px, 0px) scale(${state.zoomLevel / 100})`;
+                if (lastZoom !== state.zoomLevel) {
+                    lastZoom = state.zoomLevel;
+                    zoomRange.value = state.zoomLevel;
+                    zoomVal.textContent = `${Math.round(state.zoomLevel)}%`;
+                }
+                rafId = null;
+            }
+
+            function scheduleTransform() {
+                if (!rafId) {
+                    rafId = requestAnimationFrame(renderTransform);
+                }
+            }
+
+            zoomRange.addEventListener('input', (e) => {
+                state.zoomLevel = parseFloat(e.target.value);
+                scheduleTransform();
+                updateCropOverlayPosition();
+            });
+
+            btnIn.addEventListener('click', () => {
+                state.zoomLevel = Math.min(300, state.zoomLevel + 15);
+                scheduleTransform();
+                updateCropOverlayPosition();
+            });
+
+            btnOut.addEventListener('click', () => {
+                state.zoomLevel = Math.max(30, state.zoomLevel - 15);
+                scheduleTransform();
+                updateCropOverlayPosition();
+            });
+
+            btnReset.addEventListener('click', () => {
+                state.zoomLevel = 100;
+                state.panX = 0;
+                state.panY = 0;
+                scheduleTransform();
+                updateCropOverlayPosition();
+            });
+
+            canvasViewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 10 : -10;
+                state.zoomLevel = Math.min(300, Math.max(30, state.zoomLevel + delta));
+                scheduleTransform();
+                updateCropOverlayPosition();
+            }, {passive: false});
+
+            // Zero-delay Pointer Drag optimized via rAF
+            canvasViewport.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('#crop-overlay')) return;
+                state.isPanning = true;
+                state.panStartX = e.clientX - state.panX;
+                state.panStartY = e.clientY - state.panY;
+                canvasViewport.setPointerCapture(e.pointerId);
+            });
+
+            canvasViewport.addEventListener('pointermove', (e) => {
+                if (!state.isPanning) return;
+                state.panX = e.clientX - state.panStartX;
+                state.panY = e.clientY - state.panStartY;
+                scheduleTransform();
+            });
+
+            const stopPan = (e) => {
+                if (state.isPanning) {
+                    state.isPanning = false;
+                    try {canvasViewport.releasePointerCapture(e.pointerId);} catch (err) { }
+                    updateCropOverlayPosition();
+                }
+            };
+
+            canvasViewport.addEventListener('pointerup', stopPan);
+            canvasViewport.addEventListener('pointercancel', stopPan);
+        }
+
+        // --- RESIZABLE SIDE PANELS (delta-based, dead-zone, clamped, Esc to cancel) ---
+        function setupPanelResizers() {
+            const MIN_CENTER = 360, DEAD = 5, HANDLE = 12;
+            const cfg = [
+                {handle: 'resizer-left', panel: 'panel-left', other: 'panel-right', side: 1, def: 320, min: 240, max: 480, key: 'expressionMaker.leftW'},
+                {handle: 'resizer-right', panel: 'panel-right', other: 'panel-left', side: -1, def: 384, min: 280, max: 560, key: 'expressionMaker.rightW'}
+            ];
+            cfg.forEach(c => {
+                const handle = document.getElementById(c.handle), panel = document.getElementById(c.panel);
+                const otherEl = document.getElementById(c.other);
+                const limit = () => Math.max(c.min, Math.min(c.max, panel.parentElement.clientWidth - otherEl.offsetWidth - HANDLE - MIN_CENTER));
+                const apply = w => {panel.style.width = Math.round(Math.max(c.min, Math.min(limit(), w))) + 'px';};
+                try {const sv = parseInt(localStorage.getItem(c.key)); if (sv) apply(sv);} catch (e) { }
+
+                let active = false, moved = false, startX = 0, startW = 0, pid = null;
+                handle.addEventListener('pointerdown', e => {
+                    if (e.button !== 0) return;
+                    active = true; moved = false; startX = e.clientX; startW = panel.offsetWidth; pid = e.pointerId;
+                    handle.setPointerCapture(pid); e.preventDefault();
+                });
+                handle.addEventListener('pointermove', e => {
+                    if (!active) return;
+                    const dx = (e.clientX - startX) * c.side;
+                    if (!moved) {
+                        if (Math.abs(dx) < DEAD) return;   // ignore tiny movement from a stray click
+                        moved = true; document.body.classList.add('resizing'); handle.classList.add('bg-blue-500');
+                    }
+                    apply(startW + dx - Math.sign(dx) * DEAD);   // relative to start width: no sudden jump
+                });
+                const end = cancel => {
+                    if (!active) return;
+                    active = false;
+                    try {handle.releasePointerCapture(pid);} catch (e) { }
+                    document.body.classList.remove('resizing'); handle.classList.remove('bg-blue-500');
+                    if (cancel) panel.style.width = startW + 'px';
+                    else if (moved) {try {localStorage.setItem(c.key, panel.offsetWidth);} catch (e) { } }
+                };
+                handle.addEventListener('pointerup', () => end(false));
+                handle.addEventListener('pointercancel', () => end(true));
+                window.addEventListener('keydown', e => {if (e.key === 'Escape') end(true);});
+                window.addEventListener('blur', () => end(true));
+                window.addEventListener('resize', () => apply(panel.offsetWidth));
+                handle.addEventListener('dblclick', () => {apply(c.def); try {localStorage.removeItem(c.key);} catch (e) { } });
+            });
+        }
+
+        // --- CROP OVERLAY INTERACTION ---
+        function setupCropBoxInteraction() {
+            let isDraggingBox = false;
+            let activeHandle = null;
+            let startX = 0, startY = 0;
+            let startBox = {...state.cropBox};
+
+            cropOverlay.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                const handle = e.target.getAttribute('data-handle');
+                if (handle) {
+                    activeHandle = handle;
+                } else {
+                    isDraggingBox = true;
+                }
+                startX = e.clientX;
+                startY = e.clientY;
+                startBox = {...state.cropBox};
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDraggingBox && !activeHandle) return;
+                const rect = canvas.getBoundingClientRect();
+                const scale = rect.width;
+
+                const dx = (e.clientX - startX) / (scale || 1);
+                const dy = (e.clientY - startY) / (scale || 1);
+
+                if (isDraggingBox) {
+                    state.cropBox.x = Math.max(0, Math.min(1 - state.cropBox.size, startBox.x + dx));
+                    state.cropBox.y = Math.max(0, Math.min(1 - state.cropBox.size, startBox.y + dy));
+                } else if (activeHandle) {
+                    let newX = startBox.x;
+                    let newY = startBox.y;
+                    let newSize = startBox.size;
+
+                    // Compute maximum allowable size based on current box boundaries
+                    if (activeHandle === 'se') {
+                        // Dragging Bottom-Right: adjust size by mouse move
+                        const delta = Math.max(dx, dy);
+                        newSize = Math.max(0.05, Math.min(1 - startBox.x, 1 - startBox.y, startBox.size + delta));
+                    } else if (activeHandle === 'nw') {
+                        // Dragging Top-Left: adjust position (x, y) and size
+                        const delta = Math.max(-dx, -dy);
+                        newSize = Math.max(0.05, Math.min(startBox.x + startBox.size, startBox.y + startBox.size, startBox.size + delta));
+                        newX = startBox.x + (startBox.size - newSize);
+                        newY = startBox.y + (startBox.size - newSize);
+                    } else if (activeHandle === 'ne') {
+                        // Dragging Top-Right: adjust y and size
+                        const delta = Math.max(dx, -dy);
+                        newSize = Math.max(0.05, Math.min(1 - startBox.x, startBox.y + startBox.size, startBox.size + delta));
+                        newY = startBox.y + (startBox.size - newSize);
+                    } else if (activeHandle === 'sw') {
+                        // Dragging Bottom-Left: adjust x and size
+                        const delta = Math.max(-dx, dy);
+                        newSize = Math.max(0.05, Math.min(startBox.x + startBox.size, 1 - startBox.y, startBox.size + delta));
+                        newX = startBox.x + (startBox.size - newSize);
+                    }
+
+                    state.cropBox.x = Math.max(0, Math.min(1 - newSize, newX));
+                    state.cropBox.y = Math.max(0, Math.min(1 - newSize, newY));
+                    state.cropBox.size = newSize;
+                }
+
+                updateCropOverlayPosition();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDraggingBox || activeHandle) saveCropBox();
+                isDraggingBox = false;
+                activeHandle = null;
+            });
+        }
+
+        function updateCropOverlayPosition() {
+            if (!state.isCropToolActive || !canvas.width || !canvas.height) {
+                cropOverlay.classList.add('hidden');
+                return;
+            }
+            cropOverlay.classList.remove('hidden');
+
+            const canvasW = canvas.offsetWidth;
+            const canvasH = canvas.offsetHeight;
+            if (!canvasW || !canvasH) return;
+
+            const boxPixelSize = state.cropBox.size * canvasW;
+            const boxPixelX = state.cropBox.x * canvasW;
+            const boxPixelY = state.cropBox.y * canvasH;
+
+            cropOverlay.style.left = `${boxPixelX}px`;
+            cropOverlay.style.top = `${boxPixelY}px`;
+            cropOverlay.style.width = `${boxPixelSize}px`;
+            cropOverlay.style.height = `${boxPixelSize}px`;
+        }
+
+        // --- LOAD SAVED DATA FROM INDEXEDDB ---
+        async function loadSavedData() {
+            try {
+                const assets = await getAllDBItems('assets');
+                for (const item of assets) {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(item.blob);
+                    await img.decode();
+                    const fullItem = {...item, imgElement: img};
+
+                    if (item.id === 'base') {
+                        state.baseImage = fullItem;
+                        updateBaseStatus();
+                    } else {
+                        state.parts.push(fullItem);
+                    }
+                }
+
+                state.presets = await getAllDBItems('presets');
+                loadCropBox();
+            } catch (err) {
+                console.error('Data loading error:', err);
+            }
+        }
+
+        function updateBaseStatus() {
+            if (state.baseImage) {
+                baseStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${esc(state.baseImage.name)}`;
+            } else {
+                baseStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> 베이스 이미지 없음`;
+            }
+        }
+
+        // --- RENDER PARTS LIST FOR CURRENT CATEGORY ---
+        function renderCategoryParts() {
+            partsListContainer.innerHTML = '';
+            const categoryParts = state.parts.filter(p => p.category === state.currentCategory);
+
+            if (categoryParts.length === 0) {
+                partsListContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        등록된 파츠가 없습니다.<br>'파츠 추가' 버튼으로 불러오세요.
+                    </div>`;
+                return;
+            }
+
+            categoryParts.forEach(part => {
+                const isExtra = state.currentCategory === 'extra';
+                const isSelected = isExtra
+                    ? state.activeParts.extra.some(p => p.id === part.id)
+                    : (state.activeParts[state.currentCategory] && state.activeParts[state.currentCategory].id === part.id);
+
+                const itemEl = document.createElement('div');
+                itemEl.className = `p-2 rounded-lg border transition flex items-center justify-between gap-2 cursor-pointer ${isSelected ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`;
+
+                const cropThumb = getCroppedThumbnailDataURL(part.imgElement);
+
+                itemEl.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden flex-1 select-part-trigger">
+                        <div class="w-10 h-10 rounded border border-slate-200 transparent-bg flex items-center justify-center overflow-hidden shrink-0">
+                            <img src="${cropThumb}" class="max-w-full max-h-full object-contain pointer-events-none" />
+                        </div>
+                        <span class="text-xs font-medium text-slate-700 truncate part-name-text">${esc(part.name)}</span>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" class="btn-edit-name p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition" title="이름 수정">
+                            <i data-lucide="pencil" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        </button>
+                        <button type="button" class="btn-delete-part p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded transition" title="파츠 삭제">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        </button>
+                    </div>
+                `;
+
+                // Select Part Event
+                itemEl.querySelector('.select-part-trigger').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (isExtra) {
+                        const existsIdx = state.activeParts.extra.findIndex(p => p.id === part.id);
+                        if (existsIdx >= 0) {
+                            state.activeParts.extra.splice(existsIdx, 1);
+                        } else {
+                            state.activeParts.extra.push(part);
+                        }
+                    } else {
+                        if (state.activeParts[state.currentCategory] && state.activeParts[state.currentCategory].id === part.id) {
+                            state.activeParts[state.currentCategory] = null;
+                        } else {
+                            state.activeParts[state.currentCategory] = part;
+                        }
+                    }
+                    updateOffsetUI(isSelected ? null : part);
+                    renderCategoryParts();
+                    renderActiveLayersBar();
+                    requestCanvasDraw();
+                });
+
+                // Edit Name Button Event
+                const btnEdit = itemEl.querySelector('.btn-edit-name');
+                btnEdit.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const currentName = part.name;
+                    const newName = await uiPrompt('파츠 이름을 수정하세요:', currentName);
+                    if (newName !== null && newName.trim() !== '') {
+                        part.name = newName.trim();
+                        await saveDBItem('assets', {
+                            id: part.id,
+                            category: part.category,
+                            name: part.name,
+                            blob: part.blob,
+                            transform: part.transform || {offsetX: 0, offsetY: 0}
+                        });
+                        renderCategoryParts();
+                        renderActiveLayersBar();
+                    }
+                });
+
+                // Delete Part Event
+                const btnDelete = itemEl.querySelector('.btn-delete-part');
+                btnDelete.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const used = state.presets.filter(pr => presetUsesPart(pr, part.id));
+                    if (await uiConfirm(`'${part.name}' 파츠를 삭제하시겠습니까?` + (used.length ? `\n저장된 표정 ${used.length}개에서도 이 파츠가 빠집니다.` : ''))) {
+                        await deleteDBItem('assets', part.id);
+                        for (const pr of used) {removePartFromPreset(pr, part.id); await saveDBItem('presets', pr);}
+                        URL.revokeObjectURL(part.imgElement.src);
+                        renderPresets();
+                        state.parts = state.parts.filter(p => p.id !== part.id);
+                        if (isExtra) {
+                            state.activeParts.extra = state.activeParts.extra.filter(p => p.id !== part.id);
+                        } else if (state.activeParts[state.currentCategory] && state.activeParts[state.currentCategory].id === part.id) {
+                            state.activeParts[state.currentCategory] = null;
+                        }
+                        if (state.selectedPartForOffset && state.selectedPartForOffset.id === part.id) {
+                            updateOffsetUI(null);
+                        }
+                        renderCategoryParts();
+                        renderActiveLayersBar();
+                        requestCanvasDraw();
+                    }
+                });
+
+                partsListContainer.appendChild(itemEl);
+            });
+
+            lucide.createIcons();
+        }
+
+        // --- RENDER COLLAPSIBLE VERTICAL LAYER REORDER UI ---
+        function renderActiveLayersBar() {
+            const container = document.getElementById('active-layers-bar');
+            const countBadge = document.getElementById('active-layers-count');
+            container.innerHTML = '';
+
+            const activeList = [];
+            state.layerOrder.forEach(catKey => {
+                if (catKey === 'base' && state.baseImage) {
+                    activeList.push({id: 'base', name: '기본 베이스', cat: 'base'});
+                } else if (catKey === 'extra') {
+                    state.activeParts.extra.forEach(p => {
+                        activeList.push({id: p.id, name: p.name, cat: 'extra', item: p});
+                    });
+                } else if (state.activeParts[catKey]) {
+                    const p = state.activeParts[catKey];
+                    activeList.push({id: p.id, name: p.name, cat: catKey, item: p});
+                }
+            });
+
+            countBadge.textContent = activeList.length;
+
+            if (activeList.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">선택된 활성 레이어가 없습니다.</span>`;
+                return;
+            }
+
+            activeList.forEach((layer, idx) => {
+                const layerChip = document.createElement('div');
+                layerChip.className = 'flex items-center justify-between px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-xs text-slate-700';
+
+                layerChip.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono text-[10px] text-slate-400 w-4">${idx + 1}</span>
+                        <span class="font-medium">${esc(layer.name)}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button class="btn-move-layer-up p-1 hover:bg-slate-100 rounded text-slate-500 disabled:opacity-30" ${idx === 0 ? 'disabled' : ''} title="위로 이동">
+                            <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button class="btn-move-layer-down p-1 hover:bg-slate-100 rounded text-slate-500 disabled:opacity-30" ${idx === activeList.length - 1 ? 'disabled' : ''} title="아래로 이동">
+                            <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+
+                const btnUp = layerChip.querySelector('.btn-move-layer-up');
+                const btnDown = layerChip.querySelector('.btn-move-layer-down');
+
+                if (btnUp && idx > 0) {
+                    btnUp.addEventListener('click', () => {
+                        const targetCatKey = layer.cat;
+                        const prevCatKey = activeList[idx - 1].cat;
+                        const idx1 = state.layerOrder.indexOf(targetCatKey);
+                        const idx2 = state.layerOrder.indexOf(prevCatKey);
+
+                        if (idx1 !== -1 && idx2 !== -1 && idx1 !== idx2) {
+                            const temp = state.layerOrder[idx1];
+                            state.layerOrder[idx1] = state.layerOrder[idx2];
+                            state.layerOrder[idx2] = temp;
+                        }
+                        renderActiveLayersBar();
+                        requestCanvasDraw();
+                    });
+                }
+
+                if (btnDown && idx < activeList.length - 1) {
+                    btnDown.addEventListener('click', () => {
+                        const targetCatKey = layer.cat;
+                        const nextCatKey = activeList[idx + 1].cat;
+                        const idx1 = state.layerOrder.indexOf(targetCatKey);
+                        const idx2 = state.layerOrder.indexOf(nextCatKey);
+
+                        if (idx1 !== -1 && idx2 !== -1 && idx1 !== idx2) {
+                            const temp = state.layerOrder[idx1];
+                            state.layerOrder[idx1] = state.layerOrder[idx2];
+                            state.layerOrder[idx2] = temp;
+                        }
+                        renderActiveLayersBar();
+                        requestCanvasDraw();
+                    });
+                }
+
+                container.appendChild(layerChip);
+            });
+
+            lucide.createIcons();
+        }
+
+        // --- DRAW MAIN CANVAS ---
+        let isDrawRequested = false;
+        function requestCanvasDraw() {
+            if (!isDrawRequested) {
+                isDrawRequested = true;
+                requestAnimationFrame(() => {
+                    drawCanvas();
+                    isDrawRequested = false;
+                });
+            }
+        }
+
+        function drawCanvas() {
+            const ctx = canvas.getContext('2d');
+
+            if (!state.baseImage) {
+                canvas.width = 600;
+                canvas.height = 600;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('좌측에서 베이스 일러스트를 불러와주세요.', canvas.width / 2, canvas.height / 2);
+                fitCanvas();
+                return;
+            }
+
+            const baseImg = state.baseImage.imgElement;
+            const bw = baseImg.naturalWidth || baseImg.width, bh = baseImg.naturalHeight || baseImg.height;
+            if (canvas.width !== bw) canvas.width = bw;
+            if (canvas.height !== bh) canvas.height = bh;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw layers from bottom to top (Reverse layerOrder)
+            const renderStack = [...state.layerOrder].reverse();
+
+            renderStack.forEach(catKey => {
+                if (catKey === 'base') {
+                    ctx.drawImage(baseImg, 0, 0);
+                } else if (catKey === 'extra') {
+                    state.activeParts.extra.forEach(p => {
+                        const t = p.transform || {offsetX: 0, offsetY: 0};
+                        ctx.drawImage(p.imgElement, t.offsetX || 0, t.offsetY || 0);
+                    });
+                } else if (state.activeParts[catKey]) {
+                    const p = state.activeParts[catKey];
+                    const t = p.transform || {offsetX: 0, offsetY: 0};
+                    ctx.drawImage(p.imgElement, t.offsetX || 0, t.offsetY || 0);
+                }
+            });
+
+            fitCanvas();
+        }
+
+        function fitCanvas() {
+            if (canvas.width && canvasViewport.clientWidth) {
+                const s = Math.min((canvasViewport.clientWidth - 32) / canvas.width, (canvasViewport.clientHeight - 32) / canvas.height, 1);
+                canvas.style.width = Math.round(canvas.width * s) + 'px';
+                canvas.style.height = Math.round(canvas.height * s) + 'px';
+            }
+            updateCropOverlayPosition();
+        }
+        window.addEventListener('resize', () => fitCanvas());
+
+        // --- PRESET CARDS & PREVIEWS ---
+        function renderPresets() {
+            const container = document.getElementById('presets-container');
+            container.innerHTML = '';
+
+            if (state.presets.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400 text-xs">
+                        저장된 표정이 없습니다.<br>상단에서 이름을 입력하고 저장해보세요.
+                    </div>`;
+                return;
+            }
+
+            state.presets.forEach(preset => {
+                const card = document.createElement('div');
+                card.className = 'p-3 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3';
+
+                card.innerHTML = `
+                    <div class="text-sm font-bold text-slate-800 truncate border-b border-slate-100 pb-2 flex items-center justify-between">
+                        <span class="preset-title-text font-bold text-slate-800 truncate flex-1">${esc(preset.name)}</span>
+                        <button type="button" class="btn-edit-preset-name p-1.5 hover:bg-slate-100 text-slate-500 hover:text-blue-600 rounded-lg transition ml-2" title="이름 수정">
+                            <i data-lucide="pencil" class="w-4 h-4 pointer-events-none"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-24 h-24 rounded-lg border border-slate-200 transparent-bg overflow-hidden shrink-0 flex items-center justify-center">
+                            <canvas class="preset-thumb-canvas w-full h-full object-contain"></canvas>
+                        </div>
+                        <div class="flex-1 flex flex-col justify-between h-24 py-0.5">
+                            <button type="button" class="btn-apply-preset w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                <i data-lucide="play" class="w-3.5 h-3.5 pointer-events-none"></i> 이 표정 적용하기
+                            </button>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="btn-download-preset flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-md text-xs font-medium flex items-center justify-center gap-1 transition">
+                                    <i data-lucide="download" class="w-3 h-3 pointer-events-none"></i> 다운로드
+                                </button>
+                                <button type="button" class="btn-delete-preset p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-md text-xs transition" title="삭제">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5 pointer-events-none"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const thumbCanvas = card.querySelector('.preset-thumb-canvas');
+                renderPresetThumbnail(preset, thumbCanvas);
+
+                // Edit Preset Name Event (Isolated Handler)
+                const btnEditPreset = card.querySelector('.btn-edit-preset-name');
+                btnEditPreset.onclick = async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const newName = await uiPrompt('표정 이름을 수정하세요:', preset.name);
+                    if (newName !== null && newName.trim() !== '') {
+                        preset.name = newName.trim();
+                        await saveDBItem('presets', preset);
+                        renderPresets();
+                    }
+                };
+
+                // Apply Preset to Workspace
+                const btnApply = card.querySelector('.btn-apply-preset');
+                btnApply.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const activeMap = preset.activeParts;
+                    state.activeParts.eye = state.parts.find(p => p.id === activeMap.eye) || null;
+                    state.activeParts.eyebrow = state.parts.find(p => p.id === activeMap.eyebrow) || null;
+                    state.activeParts.mouth = state.parts.find(p => p.id === activeMap.mouth) || null;
+                    state.activeParts.extra = (activeMap.extra || []).map(id => state.parts.find(p => p.id === id)).filter(Boolean);
+
+                    if (preset.layerOrder) {
+                        state.layerOrder = [...preset.layerOrder];
+                    }
+                    if (preset.cropBox) {
+                        state.cropBox = {...preset.cropBox};
+                        saveCropBox();
+                    }
+
+                    renderCategoryParts();
+                    renderActiveLayersBar();
+                    requestCanvasDraw();
+                };
+
+                // Download Single Preset Image (Full Resolution)
+                const btnDownload = card.querySelector('.btn-download-preset');
+                btnDownload.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const tempCanvas = generatePresetCanvas(preset, false); // false for Full Canvas
+                    const link = document.createElement('a');
+                    link.download = `${preset.name}.png`;
+                    link.href = tempCanvas.toDataURL('image/png');
+                    link.click();
+                };
+
+                // Delete Preset (Isolated Handler)
+                const btnDeletePreset = card.querySelector('.btn-delete-preset');
+                btnDeletePreset.onclick = async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (await uiConfirm(`'${preset.name}' 표정을 삭제하시겠습니까?`)) {
+                        await deleteDBItem('presets', preset.id);
+                        state.presets = state.presets.filter(p => p.id !== preset.id);
+                        renderPresets();
+                    }
+                };
+
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        // Generate Preset Canvas (isCrop: true -> Crop Box / isCrop: false -> Full Standing Image)
+        function generatePresetCanvas(preset, isCrop = false) {
+            const renderCanvas = document.createElement('canvas');
+            const ctx = renderCanvas.getContext('2d');
+
+            if (!state.baseImage) {renderCanvas.width = renderCanvas.height = 1; return renderCanvas;}
+
+            const baseImg = state.baseImage.imgElement;
+            const fullW = baseImg.naturalWidth || baseImg.width;
+            const fullH = baseImg.naturalHeight || baseImg.height;
+
+            const fullCanvas = document.createElement('canvas');
+            fullCanvas.width = fullW;
+            fullCanvas.height = fullH;
+            const fullCtx = fullCanvas.getContext('2d');
+
+            const renderStack = [...(preset.layerOrder || state.layerOrder)].reverse();
+            const activeMap = preset.activeParts;
+
+            renderStack.forEach(catKey => {
+                if (catKey === 'base') {
+                    fullCtx.drawImage(baseImg, 0, 0);
+                } else if (catKey === 'extra') {
+                    (activeMap.extra || []).forEach(id => {
+                        const p = state.parts.find(part => part.id === id);
+                        if (p) {
+                            const t = p.transform || {offsetX: 0, offsetY: 0};
+                            fullCtx.drawImage(p.imgElement, t.offsetX || 0, t.offsetY || 0);
+                        }
+                    });
+                } else if (activeMap[catKey]) {
+                    const p = state.parts.find(part => part.id === activeMap[catKey]);
+                    if (p) {
+                        const t = p.transform || {offsetX: 0, offsetY: 0};
+                        fullCtx.drawImage(p.imgElement, t.offsetX || 0, t.offsetY || 0);
+                    }
+                }
+            });
+
+            if (isCrop) {
+                // Crop Framing Mode for Preset Thumbnail Icon
+                const crop = preset.cropBox || {x: 0, y: 0, size: 1};
+                const cropX = crop.x * fullW;
+                const cropY = crop.y * fullH;
+                const cropSize = crop.size * fullW;
+
+                renderCanvas.width = cropSize;
+                renderCanvas.height = cropSize;
+                ctx.drawImage(fullCanvas, cropX, cropY, cropSize, cropSize, 0, 0, cropSize, cropSize);
+            } else {
+                // Full Image Mode for Image File Export
+                renderCanvas.width = fullW;
+                renderCanvas.height = fullH;
+                ctx.drawImage(fullCanvas, 0, 0);
+            }
+
+            return renderCanvas;
+        }
+
+        function renderPresetThumbnail(preset, thumbCanvas) {
+            const tempCanvas = generatePresetCanvas(preset, true); // true -> Thumbnail crop box view
+            if (!state.baseImage) return;
+            thumbCanvas.width = tempCanvas.width;
+            thumbCanvas.height = tempCanvas.height;
+            const ctx = thumbCanvas.getContext('2d');
+            ctx.drawImage(tempCanvas, 0, 0);
+        }
+
+        // --- BATCH ZIP DOWNLOAD (FULL RESOLUTION) ---
+        async function downloadAllPresetsZip() {
+            if (state.presets.length === 0) {
+                await uiAlert('저장된 표정이 없습니다.');
+                return;
+            }
+
+            const zip = new JSZip();
+            const folder = zip.folder('character_expressions');
+
+            const usedNames = new Set();
+            state.presets.forEach(preset => {
+                const safe = preset.name.replace(/[\\/:*?"<>|]/g, '_');
+                let fname = safe, n = 2;
+                while (usedNames.has(fname)) fname = `${safe}_${n++}`;
+                usedNames.add(fname);
+                const tempCanvas = generatePresetCanvas(preset, false); // Full resolution image
+                const dataUrl = tempCanvas.toDataURL('image/png');
+                const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+                folder.file(`${fname}.png`, base64Data, {base64: true});
+            });
+
+            const content = await zip.generateAsync({type: 'blob'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = 'character_expressions.zip';
+            link.click();
+        }
+    </script>
+</body>
+
+</html>
